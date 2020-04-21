@@ -1,9 +1,9 @@
---花札衛－松に鶴－
---Flower Cardian Pine with Crane
+--花札衛－桐に鳳凰－
+--Flower Cardian Paulownia with Phoenix
 local s,id=GetID()
 function s.initial_effect(c)
 	c:EnableReviveLimit()
-	--special summon itself from hand
+	--special summon summon from hand
 	local e1=Effect.CreateEffect(c)
 	e1:SetDescription(aux.Stringid(id,0))
 	e1:SetProperty(EFFECT_FLAG_UNCOPYABLE)
@@ -26,10 +26,9 @@ function s.initial_effect(c)
 	--draw during battle
 	local e3=Effect.CreateEffect(c)
 	e3:SetCategory(CATEGORY_DRAW)
-	e3:SetDescription(aux.Stringid(id,1))
-	e3:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
-	e3:SetCode(EVENT_PHASE+PHASE_BATTLE)
-	e3:SetRange(LOCATION_MZONE)
+	e3:SetDescription(aux.Stringid(id,2))
+	e3:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)
+	e3:SetCode(EVENT_BATTLE_DAMAGE)
 	e3:SetCountLimit(1)
 	e3:SetCondition(s.drcon)
 	e3:SetTarget(s.drtg)
@@ -38,8 +37,8 @@ function s.initial_effect(c)
 end
 s.listed_series={0xe6}
 s.listed_names={id}
-function s.hspfilter(c,ft,tp)
-	return c:IsSetCard(0xe6) and c:GetLevel()==1 and not c:IsCode(id)
+function s.hspfilter(c,tp)
+	return c:IsSetCard(0xe6) and c:GetLevel()==12 and not c:IsCode(id)
 end
 function s.hspcon(e,c)
 	if c==nil then return true end
@@ -73,7 +72,7 @@ function s.operation(e,tp,eg,ep,ev,re,r,rp)
 		Duel.ConfirmCards(1-tp,tc)
 		Duel.BreakEffect()
 		if tc:IsType(TYPE_MONSTER) and tc:IsSetCard(0xe6) then
-			if tc:IsCanBeSpecialSummoned(e,0,tp,false,false) and Duel.GetLocationCount(tp,LOCATION_MZONE)>0 and Duel.SelectYesNo(tp,aux.Stringid(id,2)) then
+			if tc:IsCanBeSpecialSummoned(e,0,tp,false,false) and Duel.GetLocationCount(tp,LOCATION_MZONE)>0 and Duel.SelectYesNo(tp,aux.Stringid(id,3)) then
 				Duel.SpecialSummon(tc,0,tp,tp,false,false,POS_FACEUP)
 			end
 		else
@@ -83,7 +82,7 @@ function s.operation(e,tp,eg,ep,ev,re,r,rp)
 	end
 end
 function s.drcon(e,tp,eg,ep,ev,re,r,rp)
-	return e:GetHandler():GetBattledGroupCount()>0
+	return ep~=tp
 end
 function s.drtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return Duel.IsPlayerCanDraw(tp,1) end
