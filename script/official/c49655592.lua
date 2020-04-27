@@ -1,5 +1,5 @@
---Ｆ．Ａ．ターボチャージャー
---F.A. Turbo Charger
+--Ｆ．Ａ．ウィップクロッサー
+--F.A. Whip Crosser
 --Scripted by Eerie Code
 local s,id=GetID()
 function s.initial_effect(c)
@@ -11,24 +11,24 @@ function s.initial_effect(c)
 	e1:SetRange(LOCATION_MZONE)
 	e1:SetValue(s.atkval)
 	c:RegisterEffect(e1)
-	--prevent battle targets
+	--activate cost
 	local e2=Effect.CreateEffect(c)
 	e2:SetType(EFFECT_TYPE_FIELD)
-	e2:SetCode(EFFECT_CANNOT_SELECT_BATTLE_TARGET)
+	e2:SetCode(EFFECT_ACTIVATE_COST)
 	e2:SetRange(LOCATION_MZONE)
-	e2:SetTargetRange(0,LOCATION_MZONE)
-	e2:SetTarget(s.atglimit)
-	e2:SetValue(s.atlimit)
+	e2:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
+	e2:SetTargetRange(0,1)
+	e2:SetCost(s.costchk)
+	e2:SetTarget(s.costtg)
+	e2:SetOperation(s.costop)
 	c:RegisterEffect(e2)
-	--prevent other targets
+	--accumulate
 	local e3=Effect.CreateEffect(c)
 	e3:SetType(EFFECT_TYPE_FIELD)
-	e3:SetCode(EFFECT_CANNOT_BE_EFFECT_TARGET)
-	e3:SetProperty(EFFECT_FLAG_IGNORE_RANGE+EFFECT_FLAG_IGNORE_IMMUNE+EFFECT_FLAG_SET_AVAILABLE)
+	e3:SetCode(0x10000000+id)
 	e3:SetRange(LOCATION_MZONE)
-	e3:SetTargetRange(LOCATION_MZONE,LOCATION_MZONE)
-	e3:SetTarget(s.tglimit)
-	e3:SetValue(s.tgval)
+	e3:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
+	e3:SetTargetRange(0,1)
 	c:RegisterEffect(e3)
 	--registration
 	local e4=Effect.CreateEffect(c)
@@ -49,44 +49,27 @@ function s.initial_effect(c)
 	e5:SetCondition(s.lvcon)
 	e5:SetOperation(s.lvop)
 	c:RegisterEffect(e5)
-	--limits activations
+	--restricts discarding
 	local e6=Effect.CreateEffect(c)
 	e6:SetType(EFFECT_TYPE_FIELD)
 	e6:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
-	e6:SetCode(EFFECT_CANNOT_ACTIVATE)
 	e6:SetRange(LOCATION_MZONE)
 	e6:SetTargetRange(0,1)
-	e6:SetValue(s.aclimit)
-	e6:SetCondition(s.actcon)
+	e6:SetCode(EFFECT_CANNOT_DISCARD_HAND)
+	e6:SetCondition(s.excon)
+	e6:SetValue(1)
 	c:RegisterEffect(e6)
+	local e7=Effect.CreateEffect(c)
+	e7:SetType(EFFECT_TYPE_FIELD)
+	e7:SetRange(LOCATION_MZONE)
+	e7:SetTargetRange(0,LOCATION_HAND)
+	e7:SetCode(EFFECT_CANNOT_TO_GRAVE_AS_COST)
+	e7:SetCondition(s.excon)
+	c:RegisterEffect(e7)
 end
 s.listed_series={0x107}
 function s.atkval(e,c)
 	return c:GetLevel()*300
-end
-function s.atglimit(e,c)
-	local lv=e:GetHandler():GetLevel()
-	if c:GetRank()>0 then
-		return c:GetOriginalRank()<lv
-	elseif c:HasLevel() then
-		return c:GetOriginalLevel()<lv
-	else return false end
-end
-function s.atlimit(e,c)
-	return c~=e:GetHandler()
-end
-function s.tglimit(e,c)
-	return c~=e:GetHandler()
-end
-function s.tgval(e,re,rp)
-	if not aux.tgoval(e,re,rp) or not re:IsActiveType(TYPE_MONSTER) then return false end
-	local c=re:GetHandler()
-	local lv=e:GetHandler():GetLevel()
-	if c:GetRank()>0 then
-		return c:GetOriginalRank()<lv
-	elseif c:HasLevel() then
-		return c:GetOriginalLevel()<lv
-	else return false end
 end
 function s.lvcon(e,tp,eg,ep,ev,re,r,rp)
 	return re:IsActiveType(TYPE_SPELL+TYPE_TRAP) and re:GetHandler():IsSetCard(0x107) and e:GetHandler():GetFlagEffect(1)>0
@@ -98,18 +81,29 @@ function s.lvop(e,tp,eg,ep,ev,re,r,rp)
 		e1:SetType(EFFECT_TYPE_SINGLE)
 		e1:SetCode(EFFECT_UPDATE_LEVEL)
 		e1:SetValue(1)
+		e1:SetProperty(EFFECT_FLAG_SINGLE_RANGE)
+		e1:SetRange(LOCATION_MZONE)
 		e1:SetReset(RESET_EVENT+RESETS_STANDARD_DISABLE)
 		c:RegisterEffect(e1)
 	end
 end
-function s.aclimit(e,re,tp)
-	return re:IsActiveType(TYPE_MONSTER)
+function s.costchk(e,te_or_c,tp)
+	local ct=Duel.GetFlagEffect(tp,id)
+	return Duel.CheckLPCost(tp,ct*300)
 end
-function s.actcon(e)
-	if not e:GetHandler():IsLevelAbove(7) then return false end
-	local a=Duel.GetAttacker()
-	if not a then return false end
-	local d=a:GetBattleTarget()
-	if a:IsControler(1-e:GetHandler():GetControler()) then a,d=d,a end
-	return a and a:IsSetCard(0x107)
+function s.costtg(e,te,tp)
+	if not te:IsActiveType(TYPE_MONSTER) then return false end
+	local tc=te:GetHandler()
+	local lv=e:GetHandler():GetLevel()
+	if tc:GetRank()>0 then
+		return tc:GetOriginalRank()<lv
+	elseif tc:HasLevel() then
+		return tc:GetOriginalLevel()<lv
+	else return false end
+end
+function s.costop(e,tp,eg,ep,ev,re,r,rp)
+	Duel.PayLPCost(tp,300)
+end
+function s.excon(e)
+	return e:GetHandler():IsLevelAbove(7)
 end
