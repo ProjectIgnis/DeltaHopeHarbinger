@@ -1,12 +1,11 @@
---ＥＭオッドアイズ・ユニコーン
---Performapal Odd-Eyes Unicorn (anime)
+--EMオッドアイズ・ユニコーン (Anime)
+--Performapal Odd-Eyes Unicorn (Anime)
 --Scripted by Eerie Code
-
 local s,id=GetID()
 function s.initial_effect(c)
-	--Pendulum summon
+	--pendulum summon
 	Pendulum.AddProcedure(c)
-	--ATK up (pendulum effect)
+	--Increase ATK
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
 	e2:SetCategory(CATEGORY_ATKCHANGE)
@@ -19,7 +18,7 @@ function s.initial_effect(c)
 	e2:SetTarget(s.atktg)
 	e2:SetOperation(s.atkop)
 	c:RegisterEffect(e2)
-	--ATK up (monster effect)
+	--atk
 	local e3=Effect.CreateEffect(c)
 	e3:SetType(EFFECT_TYPE_FIELD)
 	e3:SetCode(EFFECT_UPDATE_ATTACK)
@@ -29,13 +28,12 @@ function s.initial_effect(c)
 	c:RegisterEffect(e3)
 end
 s.listed_series={0x99,0x9f}
-
 function s.atkcon(e,tp,eg,ep,ev,re,r,rp)
 	local at=Duel.GetAttacker()
 	return at:IsControler(tp) and at:IsSetCard(0x99)
 end
 function s.atkfil(c)
-	return c:IsFaceup() and c:IsSetCard(0x9f) and c:GetAttack()>0 and c:IsAttackPos()
+	return aux.nzatk(c) and c:IsAttackPos() and c:IsSetCard(0x9f)
 end
 function s.atktg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return Duel.GetAttacker():IsCanBeEffectTarget(e) and Duel.IsExistingMatchingCard(s.atkfil,tp,LOCATION_MZONE,0,1,nil) end
@@ -56,12 +54,11 @@ function s.atkop(e,tp,eg,ep,ev,re,r,rp)
 		at:RegisterEffect(e1)
 	end
 end
-
 function s.atkfilter(c)
 	return c:IsFaceup() and (c:IsSetCard(0x99) or c:IsSetCard(0x9f))
 end
 function s.atkval(e,c)
 	if s.atkfilter(c) then
 		return Duel.GetMatchingGroupCount(s.atkfilter,c:GetControler(),LOCATION_MZONE,0,nil)*100
-	else return 0 end	
+	else return 0 end   
 end
