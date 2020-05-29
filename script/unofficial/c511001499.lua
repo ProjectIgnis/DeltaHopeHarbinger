@@ -1,76 +1,78 @@
---Shard of Hope
+--Take One Chance
 local s,id=GetID()
 function s.initial_effect(c)
 	--Activate
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_ACTIVATE)
 	e1:SetCode(EVENT_FREE_CHAIN)
-	e1:SetProperty(EFFECT_FLAG_DAMAGE_STEP+EFFECT_FLAG_DAMAGE_CAL)
-	e1:SetTarget(s.tg)
+	e1:SetTarget(s.target)
+	e1:SetOperation(s.activate)
 	c:RegisterEffect(e1)
-	--draw
 	local e2=Effect.CreateEffect(c)
-	e2:SetDescription(aux.Stringid(id,0))
-	e2:SetCategory(CATEGORY_DRAW)
-	e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_F)
-	e2:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
-	e2:SetRange(LOCATION_SZONE)
-	e2:SetCode(EVENT_BATTLE_DAMAGE)
-	e2:SetCondition(s.drcon)
-	e2:SetTarget(s.drtg)
-	e2:SetOperation(s.drop)
+	e2:SetType(EFFECT_TYPE_SINGLE)
+	e2:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE+EFFECT_FLAG_SET_AVAILABLE+EFFECT_FLAG_CANNOT_DISABLE)
+	e2:SetCode(511001283)
 	c:RegisterEffect(e2)
 end
-function s.tg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return true end
-	local res,teg,tep,tev,tre,tr,trp=Duel.CheckEvent(EVENT_BATTLE_DAMAGE,true)
-	if res and s.drcon(e,tp,teg,tep,tev,tre,tr,trp) and s.drtg(e,tp,teg,tep,tev,tre,tr,trp,0) then
-		e:SetOperation(s.drop)
-		s.drtg(e,tp,teg,tep,tev,tre,tr,trp,1)
-		e:SetCategory(CATEGORY_DRAW)
-		e:SetProperty(EFFECT_FLAG_PLAYER_TARGET+EFFECT_FLAG_DAMAGE_STEP+EFFECT_FLAG_DAMAGE_CAL)
+function s.cfilter(c,tp,eg,ep,ev,re,r,rp,chain)
+	return not c:IsHasEffect(511001283) and s.filter(c,tp,eg,ep,ev,re,r,rp,chain)
+end
+function s.filter(c,tp,eg,ep,ev,re,r,rp,chain)
+	if not c:IsType(TYPE_FIELD) and Duel.GetLocationCount(tp,LOCATION_SZONE)<=0 then return false end
+	local te=c:GetActivateEffect()
+	if not te then return false end
+	if c:IsHasEffect(EFFECT_CANNOT_TRIGGER) then return false end
+	local pre={Duel.GetPlayerEffect(tp,EFFECT_CANNOT_ACTIVATE)}
+	if pre[1] then
+		for i,eff in ipairs(pre) do
+			local prev=eff:GetValue()
+			if type(prev)~='function' or prev(eff,te,tp) then return false end
+		end
+	end
+	local condition=te:GetCondition()
+	local cost=te:GetCost()
+	local target=te:GetTarget()
+	if te:GetCode()==EVENT_CHAINING then
+		if chain<=0 then return false end
+		local te2=Duel.GetChainInfo(chain,CHAININFO_TRIGGERING_EFFECT)
+		local tc=te2:GetHandler()
+		local g=Group.FromCards(tc)
+		local p=tc:GetControler()
+		return (not condition or condition(te,tp,g,p,chain,te2,REASON_EFFECT,p)) and (not cost or cost(te,tp,g,p,chain,te2,REASON_EFFECT,p,0)) 
+			and (not target or target(te,tp,g,p,chain,te2,REASON_EFFECT,p,0))
+	elseif te:GetCode()==EVENT_FREE_CHAIN then
+		return (not condition or condition(te,tp,eg,ep,ev,re,r,rp)) and (not cost or cost(te,tp,eg,ep,ev,re,r,rp,0))
+			and (not target or target(te,tp,eg,ep,ev,re,r,rp,0))
 	else
-		e:SetOperation(nil)
-		e:SetCategory(0)
-		e:SetProperty(EFFECT_FLAG_DAMAGE_STEP+EFFECT_FLAG_DAMAGE_CAL)
+		local res,teg,tep,tev,tre,tr,trp=Duel.CheckEvent(te:GetCode(),true)
+		return res and (not condition or condition(te,tp,teg,tep,tev,tre,tr,trp)) and (not cost or cost(te,tp,teg,tep,tev,tre,tr,trp,0))
+			and (not target or target(te,tp,teg,tep,tev,tre,tr,trp,0))
 	end
 end
-function s.drcon(e,tp,eg,ep,ev,re,r,rp)
-	return ep~=tp
+function s.target(e,tp,eg,ep,ev,re,r,rp,chk)
+	local chain=Duel.GetCurrentChain()
+	if chk==0 then return Duel.IsExistingMatchingCard(s.cfilter,tp,LOCATION_GRAVE,0,1,e:GetHandler(),tp,eg,ep,ev,re,r,rp,chain) 
+		and Duel.GetLocationCount(tp,LOCATION_SZONE)>0 end
 end
-function s.drtg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return true end
-	Duel.SetTargetPlayer(tp)
-	Duel.SetTargetParam(1)
-	Duel.SetOperationInfo(0,CATEGORY_DRAW,nil,0,tp,1)
-end
-function s.drop(e,tp,eg,ep,ev,re,r,rp)
-	if not e:GetHandler():IsRelateToEffect(e) then return end
+function s.activate(e,tp,eg,ep,ev,re,r,rp)
 	local chain=Duel.GetCurrentChain()-1
-	local p,d=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER,CHAININFO_TARGET_PARAM)
-	local h=Duel.GetDecktopGroup(tp,1)
-	local tc=h:GetFirst()
-	Duel.Draw(p,d,REASON_EFFECT)
-	if tc then
-		Duel.ConfirmCards(1-tp,tc)
+	if Duel.GetLocationCount(tp,LOCATION_SZONE)<=0 then return end
+	local sg=Duel.GetMatchingGroup(nil,tp,LOCATION_GRAVE,0,nil)
+	local g=sg:RandomSelect(tp,1)
+	if #g>0 then
+		local tc=g:GetFirst()
+		local tpe=tc:GetType()
 		local te=tc:GetActivateEffect()
 		if not te then return end
-		local pre={Duel.GetPlayerEffect(tp,EFFECT_CANNOT_ACTIVATE)}
-		if pre[1] then
-			for i,eff in ipairs(pre) do
-				local prev=eff:GetValue()
-				if type(prev)~='function' or prev(eff,te,tp) then return false end
-			end
-		end
-		if tc:IsType(TYPE_TRAP) and tc:CheckActivateEffect(false,false,false)~=nil and not tc:IsHasEffect(EFFECT_CANNOT_TRIGGER) then
-			Duel.Destroy(e:GetHandler(),REASON_EFFECT)
-			local tpe=tc:GetType()
-			local tg=te:GetTarget()
-			local co=te:GetCost()
-			local op=te:GetOperation()
+		if not Duel.IsExistingMatchingCard(s.cfilter,tp,LOCATION_GRAVE,0,1,e:GetHandler(),tp,eg,ep,ev,re,r,rp,chain) then return end
+		local con=te:GetCondition()
+		local co=te:GetCost()
+		local tg=te:GetTarget()
+		local op=te:GetOperation()
+		if s.filter(tc,tp,eg,ep,ev,re,r,rp,chain) then
+			Duel.ClearTargetCard()
 			e:SetCategory(te:GetCategory())
 			e:SetProperty(te:GetProperty())
-			Duel.ClearTargetCard()
 			if (tpe&TYPE_FIELD)~=0 then
 				local fc=Duel.GetFieldCard(1-tp,LOCATION_SZONE,5)
 				if Duel.IsDuelType(DUEL_1_FIELD) then
@@ -106,7 +108,6 @@ function s.drop(e,tp,eg,ep,ev,re,r,rp)
 				if co then co(te,tp,teg,tep,tev,tre,tr,trp,1) end
 				if tg then tg(te,tp,teg,tep,tev,tre,tr,trp,1) end
 			end
-			Duel.BreakEffect()
 			local g=Duel.GetChainInfo(0,CHAININFO_TARGET_CARDS)
 			if g then
 				local etc=g:GetFirst()
@@ -115,6 +116,7 @@ function s.drop(e,tp,eg,ep,ev,re,r,rp)
 					etc=g:GetNext()
 				end
 			end
+			Duel.BreakEffect()
 			tc:SetStatus(STATUS_ACTIVATED,true)
 			if not tc:IsDisabled() then
 				if te:GetCode()==EVENT_CHAINING then
@@ -137,7 +139,7 @@ function s.drop(e,tp,eg,ep,ev,re,r,rp)
 				Duel.Equip(tp,tc,g:GetFirst())
 			end
 			tc:ReleaseEffectRelation(te)
-			if etc then 
+			if etc then	
 				etc=g:GetFirst()
 				while etc do
 					etc:ReleaseEffectRelation(te)
@@ -145,8 +147,8 @@ function s.drop(e,tp,eg,ep,ev,re,r,rp)
 				end
 			end
 		else
-			Duel.Destroy(tc,REASON_EFFECT)
-			Duel.SendtoGrave(tc,REASON_EFFECT)
+			Duel.ConfirmCards(1-tp,g)
+			Duel.ConfirmCards(tp,g)
 		end
 	end
 end
