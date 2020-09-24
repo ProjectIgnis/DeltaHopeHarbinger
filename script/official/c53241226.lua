@@ -38,11 +38,15 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 		and tc:IsAbleToChangeControler() and Duel.Equip(tp,oc,tc,false) then
 		--no battle damage
 		local e1=Effect.CreateEffect(c)
-		e1:SetType(EFFECT_TYPE_SINGLE)
-		e1:SetCode(EFFECT_NO_BATTLE_DAMAGE)
-		e1:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)
-		e1:SetReset(RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END)
-		tc:RegisterEffect(e1)
+		e1:SetType(EFFECT_TYPE_FIELD)
+		e1:SetCode(EFFECT_CHANGE_DAMAGE)
+		e1:SetProperty(EFFECT_FLAG_PLAYER_TARGET)
+		e1:SetTargetRange(0,1)
+		e1:SetLabelObject(tc)
+		e1:SetValue(s.damval)
+		e1:SetReset(RESET_PHASE+PHASE_END)
+		tc:RegisterFlagEffect(id,RESET_EVENT+RESETS_STANDARD+RESET_PHASE+PHASE_END,0,1)
+		Duel.RegisterEffect(e1,tp)
 		--substitute
 		local e2=Effect.CreateEffect(c)
 		e2:SetType(EFFECT_TYPE_EQUIP)
@@ -60,6 +64,12 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 		e3:SetLabelObject(tc)
 		oc:RegisterEffect(e3)
 	end
+end
+function s.damval(e,re,val,r,rp,rc)
+	local tc=e:GetLabelObject()
+	if not tc then return val end
+	if tc:IsRelateToBattle() and tc:GetFlagEffect(id)>=0 and (r&REASON_BATTLE)~=0 then return 0 end
+	return val
 end
 function s.eqlimit(e,c)
 	return c==e:GetLabelObject()
