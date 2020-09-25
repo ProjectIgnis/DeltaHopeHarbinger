@@ -1,8 +1,8 @@
 --クリムゾン・ヘルフレア
---Crimson Fire (Anime)
+--Crimson Fire
 local s,id=GetID()
 function s.initial_effect(c)
-	--reflect
+	--Reflect
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_ACTIVATE)
 	e1:SetCode(EVENT_CHAINING)
@@ -10,12 +10,10 @@ function s.initial_effect(c)
 	e1:SetOperation(s.operation)
 	c:RegisterEffect(e1)
 end
-function s.cfilter(c,ev)
-	return c:IsFaceup() and c:GetAttack()>ev
-end
+s.listed_names={70902743}
 function s.condition(e,tp,eg,ep,ev,re,r,rp)
-	return Duel.IsExistingMatchingCard(s.cfilter,tp,LOCATION_ONFIELD,0,1,nil,ev) and ep==1-tp
-		and aux.damcon1(e,tp,eg,ep,ev,re,r,rp)
+	return Duel.IsExistingMatchingCard(aux.FilterFaceupFunction(Card.IsCode,70902743),tp,LOCATION_ONFIELD,0,1,nil)
+		and ep==1-tp and re:IsHasType(EFFECT_TYPE_ACTIVATE) and aux.damcon1(e,tp,eg,ep,ev,re,r,rp)
 end
 function s.operation(e,tp,eg,ep,ev,re,r,rp)
 	local cid=Duel.GetChainInfo(ev,CHAININFO_CHAIN_ID)
