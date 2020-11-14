@@ -1,9 +1,9 @@
---コード・エクスポーター
---Code Exporter
---Scripted by Hel
+--コード・ラジエーター
+--Code Radiator
+--hand material by edo9300
 local s,id=GetID()
 function s.initial_effect(c)
-	--Extra Material (thx edo9300)
+	--Extra Material
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_FIELD)
 	e1:SetRange(LOCATION_HAND)
@@ -19,17 +19,17 @@ function s.initial_effect(c)
 	if s.flagmap[c]==nil then
 		s.flagmap[c] = {}
 	end
-	--search
+	--disable
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
-	e2:SetCategory(CATEGORY_TOHAND+CATEGORY_SPECIAL_SUMMON)
+	e2:SetCategory(CATEGORY_ATKCHANGE+CATEGORY_DISABLE)
 	e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)
 	e2:SetProperty(EFFECT_FLAG_DELAY+EFFECT_FLAG_CARD_TARGET)
 	e2:SetCode(EVENT_BE_MATERIAL)
 	e2:SetCountLimit(1,id)
-	e2:SetCondition(s.thcon)
-	e2:SetTarget(s.thtg)
-	e2:SetOperation(s.thop)
+	e2:SetCondition(s.discon)
+	e2:SetTarget(s.distg)
+	e2:SetOperation(s.disop)
 	c:RegisterEffect(e2)
 end
 s.listed_series={0x101}
@@ -66,43 +66,44 @@ function s.extraval(chk,summon_type,e,...)
 		s.flagmap[c]={}
 	end
 end
-function s.thcon(e,tp,eg,ep,ev,re,r,rp)
+function s.discon(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	e:SetLabel(0)
 	if c:IsPreviousLocation(LOCATION_ONFIELD) then e:SetLabel(1) end
 	return c:IsLocation(LOCATION_GRAVE) and c:IsPreviousLocation(LOCATION_ONFIELD+LOCATION_HAND) and r==REASON_LINK and c:GetReasonCard():IsSetCard(0x101)
 end
-function s.thfilter(c,e,tp,chk)
-	return c:IsRace(RACE_CYBERSE) and c:IsLevelBelow(4) and (c:IsAbleToHand() or (chk==1 and Duel.GetLocationCount(tp,LOCATION_MZONE)>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)))
+function s.disfilter(c)
+	return c:IsFaceup() and not (c:GetAttack()==0 and c:IsDisabled())
 end
-function s.thtg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chkc then return chkc:IsLocation(LOCATION_GRAVE) and chkc:IsControler(tp) and s.thfilter(chkc,e,tp,check) end
-	if chk==0 then return Duel.IsExistingTarget(s.thfilter,tp,LOCATION_GRAVE,0,1,nil,e,tp,check) end
-	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-	local g=Duel.SelectTarget(tp,s.thfilter,tp,LOCATION_GRAVE,0,1,1,nil,e,tp,check)
-	Duel.SetOperationInfo(0,CATEGORY_TOHAND,g,1,0,0)
+function s.distg(e,tp,eg,ep,ev,re,r,rp,chk,chkc)
+	if chkc then return chkc:IsLocation(LOCATION_MZONE) and chkc:IsControler(1-tp) and s.disfilter(chkc) end
+	if chk==0 then return Duel.IsExistingTarget(s.disfilter,tp,0,LOCATION_MZONE,1,nil) end
+	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_TARGET)
+	Duel.SelectTarget(tp,s.disfilter,tp,0,LOCATION_MZONE,1,1+e:GetLabel(),nil)
 end
-function s.thop(e,tp,eg,ep,ev,re,r,rp)
+function s.disop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
-	local tc=Duel.GetFirstTarget()
-	if not tc or not tc:IsRelateToEffect(e) then return end
-	if tc:IsAbleToHand() and (e:GetLabel()==0 or Duel.GetLocationCount(tp,LOCATION_MZONE)<=0 or not tc:IsCanBeSpecialSummoned(e,0,tp,false,false)
-		or Duel.SelectOption(tp,1190,1152)==0) then
-		Duel.SendtoHand(tc,nil,REASON_EFFECT)
-		Duel.ConfirmCards(1-tp,tc)
-	else
-		if Duel.SpecialSummonStep(tc,0,tp,tp,false,false,POS_FACEUP) then
+	local g=Duel.GetChainInfo(0,CHAININFO_TARGET_CARDS)
+	for tc in aux.Next(g) do
+		if tc:IsFaceup() and tc:IsRelateToEffect(e) then
 			local e1=Effect.CreateEffect(c)
 			e1:SetType(EFFECT_TYPE_SINGLE)
-			e1:SetCode(EFFECT_DISABLE)
+			e1:SetCode(EFFECT_SET_ATTACK_FINAL)
+			e1:SetValue(0)
 			e1:SetReset(RESET_EVENT+RESETS_STANDARD)
 			tc:RegisterEffect(e1)
+			Duel.NegateRelatedChain(tc,RESET_TURN_SET)
 			local e2=Effect.CreateEffect(c)
 			e2:SetType(EFFECT_TYPE_SINGLE)
-			e2:SetCode(EFFECT_DISABLE_EFFECT)
+			e2:SetCode(EFFECT_DISABLE)
 			e2:SetReset(RESET_EVENT+RESETS_STANDARD)
 			tc:RegisterEffect(e2)
+			local e3=Effect.CreateEffect(c)
+			e3:SetType(EFFECT_TYPE_SINGLE)
+			e3:SetCode(EFFECT_DISABLE_EFFECT)
+			e3:SetValue(RESET_TURN_SET)
+			e3:SetReset(RESET_EVENT+RESETS_STANDARD)
+			tc:RegisterEffect(e3)
 		end
-		Duel.SpecialSummonComplete()
 	end
 end
