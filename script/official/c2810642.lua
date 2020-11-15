@@ -1,5 +1,5 @@
---ＰＳＹフレームギア・γ
---PSY-Framegear Gamma
+--ＰＳＹフレームギア・β
+--PSY-Framegear Beta
 
 local s,id=GetID()
 function s.initial_effect(c)
@@ -11,14 +11,13 @@ function s.initial_effect(c)
 	e1:SetCode(EFFECT_SPSUMMON_CONDITION)
 	e1:SetValue(s.splimit)
 	c:RegisterEffect(e1)
-	----Special summon itself and "PSY-Frame Driver", negate the activation of a monster effect
+	----Special summon itself and "PSY-Frame Driver", destroy attacking monster
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
-	e2:SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_NEGATE+CATEGORY_DESTROY)
-	e2:SetType(EFFECT_TYPE_QUICK_O)
+	e2:SetCategory(CATEGORY_SPECIAL_SUMMON+CATEGORY_DESTROY)
+	e2:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O)
 	e2:SetRange(LOCATION_HAND)
-	e2:SetCode(EVENT_CHAINING)
-	e2:SetProperty(EFFECT_FLAG_DAMAGE_STEP+EFFECT_FLAG_DAMAGE_CAL)
+	e2:SetCode(EVENT_ATTACK_ANNOUNCE)
 	e2:SetCondition(s.condition)
 	e2:SetTarget(s.target)
 	e2:SetOperation(s.operation)
@@ -30,23 +29,20 @@ function s.splimit(e,se,sp,st)
 	return se:IsHasType(EFFECT_TYPE_ACTIONS)
 end
 function s.condition(e,tp,eg,ep,ev,re,r,rp)
-	return ep~=tp and re:IsActiveType(TYPE_MONSTER) and Duel.IsChainNegatable(ev)
-		and (Duel.GetFieldGroupCount(tp,LOCATION_MZONE,0)==0 or Duel.IsPlayerAffectedByEffect(tp,CARD_PSYFRAME_LAMBDA))
+	return Duel.GetAttacker():GetControler()~=tp and (Duel.GetFieldGroupCount(tp,LOCATION_MZONE,0)==0 or Duel.IsPlayerAffectedByEffect(tp,CARD_PSYFRAME_LAMBDA))
 end
 function s.spfilter(c,e,tp)
 	return c:IsCode(CARD_PSYFRAME_DRIVER) and c:IsCanBeSpecialSummoned(e,0,tp,false,false)
 end
 function s.target(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return not e:GetHandler():IsStatus(STATUS_CHAINING)
-		and not Duel.IsPlayerAffectedByEffect(tp,CARD_BLUEEYES_SPIRIT)
+	if chk==0 then return not Duel.IsPlayerAffectedByEffect(tp,CARD_BLUEEYES_SPIRIT)
 		and Duel.GetLocationCount(tp,LOCATION_MZONE)>1
+		and Duel.GetAttacker():IsRelateToBattle()
 		and e:GetHandler():IsCanBeSpecialSummoned(e,0,tp,false,false)
 		and Duel.IsExistingMatchingCard(s.spfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,nil,e,tp) end
+	Duel.SetTargetCard(Duel.GetAttacker())
 	Duel.SetOperationInfo(0,CATEGORY_SPECIAL_SUMMON,nil,2,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE)
-	Duel.SetOperationInfo(0,CATEGORY_NEGATE,eg,1,0,0)
-	if re:GetHandler():IsDestructable() and re:GetHandler():IsRelateToEffect(re) then
-		Duel.SetOperationInfo(0,CATEGORY_DESTROY,eg,1,0,0)
-	end
+	Duel.SetOperationInfo(0,CATEGORY_DESTROY,Duel.GetAttacker(),1,0,0)
 end
 function s.operation(e,tp,eg,ep,ev,re,r,rp)
 	if Duel.IsPlayerAffectedByEffect(tp,CARD_BLUEEYES_SPIRIT) then return end
@@ -74,8 +70,10 @@ function s.operation(e,tp,eg,ep,ev,re,r,rp)
 	e1:SetCondition(s.rmcon)
 	e1:SetOperation(s.rmop)
 	Duel.RegisterEffect(e1,tp)
-	if Duel.NegateActivation(ev) and re:GetHandler():IsRelateToEffect(re) then
-		Duel.Destroy(eg,REASON_EFFECT)
+	local dc=Duel.GetFirstTarget()
+	if dc:IsRelateToEffect(e) and Duel.Destroy(dc,REASON_EFFECT)~=0 then
+		Duel.BreakEffect()
+		Duel.SkipPhase(1-tp,PHASE_BATTLE,RESET_PHASE+PHASE_BATTLE,1)
 	end
 end
 function s.rmfilter(c,fid)
@@ -87,9 +85,7 @@ function s.rmcon(e,tp,eg,ep,ev,re,r,rp)
 		g:DeleteGroup()
 		e:Reset()
 		return false
-	else
-		return true
-	end
+	else return true end
 end
 function s.rmop(e,tp,eg,ep,ev,re,r,rp)
 	local g=e:GetLabelObject()
