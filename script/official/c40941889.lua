@@ -1,5 +1,5 @@
---ZW－雷神猛虎剣
---ZW - Lightning Blade
+--ZW－阿修羅副腕
+--ZW - Asura Strike
 local s,id=GetID()
 function s.initial_effect(c)
 	c:SetUniqueOnField(1,0,id)
@@ -15,24 +15,14 @@ function s.initial_effect(c)
 	e1:SetOperation(s.eqop)
 	c:RegisterEffect(e1)
 	aux.AddZWEquipLimit(c,s.eqcon,function(tc,c,tp) return s.filter(tc) and tc:IsControler(tp) end,s.equipop,e1)
-	--
+	--attack all
 	local e2=Effect.CreateEffect(c)
-	e2:SetType(EFFECT_TYPE_FIELD)
-	e2:SetCode(EFFECT_INDESTRUCTABLE_EFFECT)
-	e2:SetRange(LOCATION_SZONE)
-	e2:SetTargetRange(LOCATION_ONFIELD,0)
-	e2:SetTarget(aux.TargetBoolFunction(Card.IsSetCard,0x107e))
-	e2:SetValue(s.indval)
+	e2:SetType(EFFECT_TYPE_EQUIP)
+	e2:SetCode(EFFECT_ATTACK_ALL)
+	e2:SetValue(1)
 	c:RegisterEffect(e2)
-	--destroy sub
-	local e3=Effect.CreateEffect(c)
-	e3:SetType(EFFECT_TYPE_EQUIP)
-	e3:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)
-	e3:SetCode(EFFECT_DESTROY_SUBSTITUTE)
-	e3:SetValue(s.repval)
-	c:RegisterEffect(e3)
 end
-s.listed_series={0x107f,0x107e}
+s.listed_series={0x107f}
 function s.eqcon(e,tp,eg,ep,ev,re,r,rp)
 	return e:GetHandler():CheckUniqueOnField(tp)
 end
@@ -63,13 +53,7 @@ function s.equipop(c,e,tp,tc)
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_EQUIP)
 	e1:SetCode(EFFECT_UPDATE_ATTACK)
-	e1:SetValue(1200)
+	e1:SetValue(1000)
 	e1:SetReset(RESET_EVENT+RESETS_STANDARD)
 	c:RegisterEffect(e1)
-end
-function s.indval(e,re,rp)
-	return rp==1-e:GetHandlerPlayer()
-end
-function s.repval(e,re,r,rp)
-	return (r&REASON_EFFECT)~=0
 end
